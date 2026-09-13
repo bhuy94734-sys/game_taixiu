@@ -167,10 +167,45 @@ var Taixiu = function(){
 
 tx = new Taixiu();
 
+// Biến lưu trữ số dư ví của các user theo ID Telegram
+let usersWallet = {};
+
 io.on('connection', function (socket) {
+    
+    // 1. Nhận sự kiện đăng nhập tự động từ Telegram WebApp khi vừa mở app
+    socket.on('login_telegram', function (userData) {
+        let userId = userData.id;
+        if (!usersWallet[userId]) {
+            // Cấp mặc định 1,000,000 xu cho tài khoản mới mở app lần đầu
+            usersWallet[userId] = {
+                name: userData.first_name || "Thành viên",
+                balance: 1000000 
+            };
+        }
+        // Gửi số dư hiện tại về cho giao diện hiển thị
+        socket.emit('update_balance', usersWallet[userId]);
+    });
+
+    // 2. Sự kiện cược cũ của game (đã được bọc thêm kiểm tra số dư ví)
     socket.on('pull', function (data) {
-        msg = tx.putMoney(data.id,data.dice,data.money);
-        socket.emit('pull', msg);
+        let userId = data.id;
+        let soTienCuoc = data.money;
+
+        // Kiểm tra xem user có đủ tiền trong ví không trước khi cho cược
+        if (usersWallet[userId] && usersWallet[userId].balance >= soTienCuoc) {
+            // Trừ tiền trong ví cá nhân
+            usersWallet[userId].balance -= soTienCuoc;
+            
+            // Gọi hàm putMoney gốc của game
+            msg = tx.putMoney(userId, data.dice, data.money);
+            
+            // Trả về kết quả và cập nhật lại số dư mới cho client
+            socket.emit('pull', msg);
+            socket.emit('update_balance', usersWallet[userId]);
+        } else {
+            socket.emit('pull', { status: 'fail', message: 'Số dư trong ví không đủ!' });
+        }
     });
 });
+
 tx.gameStart();
