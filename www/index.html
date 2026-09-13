@@ -316,25 +316,35 @@ document.getElementById('pullxiu').addEventListener("keyup", function(event) {
         document.getElementById('pullxiu').value = '';
     }
 });
-  // --- TÍCH HỢP TELEGRAM VÀ HIỂN THỊ SỐ DƯ ---
+  // --- TÍCH HỢP GIAO DIỆN TÀI KHOẢN VÀ SỐ DƯ ---
   if (window.Telegram && window.Telegram.WebApp) {
     const tg = window.Telegram.WebApp;
     tg.expand();
-    const userData = tg.initDataUnsafe?.user || { id: Math.floor(Math.random()*100000), first_name: "Thành viên" };
+    const userData = tg.initDataUnsafe?.user || { id: Math.floor(Math.random()*100000), first_name: "Thành viên VIP" };
     
-    // Khi socket kết nối xong thì gửi thông tin user lên server
+    // Tự động chèn khung hiển thị tên và số dư lên góc màn hình game
+    if (!document.getElementById('user-info-box')) {
+      const infoBox = document.createElement('div');
+      infoBox.id = 'user-info-box';
+      infoBox.style.cssText = "position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #ffd700; padding: 5px 12px; border-radius: 15px; font-size: 14px; z-index: 9999; border: 1px solid #ffd700; font-weight: bold;";
+      infoBox.innerHTML = `👤 <span id="u-name">${userData.first_name}</span> | 💰 <span id="u-balance">1,000,000</span> đ`;
+      document.body.appendChild(infoBox);
+    }
+
     if (typeof socket !== 'undefined') {
       socket.on('connect', () => {
         socket.emit('login_telegram', userData);
       });
       
       socket.on('update_balance', (data) => {
-        console.log("Số dư ví nhận được:", data.balance);
-        // Nếu có thẻ hiển thị tiền trên giao diện, bạn có thể cập nhật ở đây
+        let balElement = document.getElementById('u-balance');
+        if (balElement) {
+          balElement.innerText = data.balance.toLocaleString();
+        }
       });
     }
   }
-  // -------------------------------------------
+  // ---------------------------------------------
 
 </script>
 </html>
